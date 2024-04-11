@@ -1,6 +1,6 @@
 # syntax=quay.io/astronomer/airflow-extensions:latest
 
-FROM quay.io/astronomer/astro-runtime:9.1.0-python-3.9-base
+FROM quay.io/astronomer/astro-runtime:9.10.0-python-3.9-base
 
 COPY include/astro_provider_snowflake-0.0.0-py3-none-any.whl /tmp
 

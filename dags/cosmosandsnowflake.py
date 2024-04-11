@@ -1,3 +1,6 @@
+from datetime import datetime
+import os
+from airflow.decorators import dag, task
 from airflow.operators.dummy_operator import DummyOperator
 from astro import sql as aql
 from astro.files import File
@@ -8,12 +11,9 @@ from astronomer.providers.snowflake.utils.snowpark_helpers import SnowparkTable
 from pathlib import Path
 
 dbt_project_path = Path("/usr/local/airflow/dags/dbt/cosmosproject")
-snowflake_objects = {'demo_database': 'DEMO',
-                     'demo_schema': 'DEMO',
-                     'demo_warehouse': 'COMPUTE_WH',
-                     'demo_xcom_stage': 'XCOM_STAGE',
-                     'demo_xcom_table': 'XCOM_TABLE',
-                     'demo_snowpark_wh': 'SNOWPARK_WH'
+snowflake_objects = {'demo_database': 'demo_dbt',
+                     'demo_schema': 'public',
+                     'demo_warehouse': 'dbt_dev_wh',
 }
 _SNOWFLAKE_CONN_ID = "snowflake_default"
 
@@ -23,7 +23,7 @@ profile_config = ProfileConfig(
     profile_mapping=SnowflakeUserPasswordProfileMapping(
         conn_id="snowflake_default",
         profile_args={
-          "database": "demo_dbt",
+            "database": "demo_dbt",
             "schema": "public"
         },
     )
@@ -54,12 +54,13 @@ def dbt_snowpark_dag():
 
     intermediate = DummyOperator(task_id='intermediate')
 
-    @task.snowpark_virtualenv(python_version='3.8', requirements=['snowflake-ml-python==1.0.9'])
-    def findbesthotel(snowflake_objects:dict): 
-        
+    #@task.snowpark_virtualenv(python_version='3.8', requirements=['snowflake-ml-python==1.0.9'])
+    @task.snowpark_virtualenv(python_version='3.8', requirements=['snowflake-ml-python'])
+
+    def findbesthotel(snowflake_objects: dict): 
         df = snowpark_session.sql("""
             SELECT *
-            FROM DEMO_DBT.PUBLIC.THIRTY_DAY_AVG_COST
+            FROM DEMO_DBT.ANALYSIS.THIRTY_DAY_AVG_COST
         """).to_pandas()
         highest_cost_hotel = df[df['COST'] == df['COST'].max()]['HOTEL']
 
@@ -68,8 +69,8 @@ def dbt_snowpark_dag():
 
         return highest_cost_hotel_str
     
-
     besthotel = findbesthotel(snowflake_objects)
+
     transform_data >> intermediate >> besthotel
 
 dbt_snowpark_dag = dbt_snowpark_dag()
